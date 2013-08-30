@@ -79,13 +79,24 @@ function bmhBodyRules($body,$structure,$debug_mode=false) {
   );
 
   // ======== rules =========
+  
+  /* rule: dns_unknown
+   * sample:
+   *   Technical details of permanent failure:
+   *   DNS Error: Domain name not found
+   */
+  if (preg_match ("/domain\s+name\s+not\s+found/i",$body,$match)) {
+    $result['rule_cat'] = 'dns_unknown';
+    $result['rule_no']  = '0999';
+  }
+  
 
   /* rule: unknown
    * sample:
    *   xxxxx@yourdomain.com
    *   no such address here
    */
-  if (preg_match ("/no\s+such\s+address\s+here/i",$body,$match)) {
+  elseif (preg_match ("/no\s+such\s+address\s+here/i",$body,$match)) {
     $result['rule_cat'] = 'unknown';
     $result['rule_no']  = '0237';
   }
@@ -513,7 +524,7 @@ function bmhBodyRules($body,$structure,$debug_mode=false) {
     $result['rule_no']  = '0247';
   }
 
-  if ($result['rule_no'] !== '0000' && $result['email'] === '') {
+  if ($result['rule_no'] !== '0000' && $result['email'] === '') {      
     $preBody = substr($body, 0, strpos($body, $match[0]));
     if ($count = preg_match_all('/(\S+@\S+)/', $preBody, $match)) {
       $result['email'] = trim($match[1][$count-1], "'\"()<>.:; \t\r\n\0\x0B");

@@ -544,6 +544,7 @@ class BounceMailHandler
         $header  = imap_header($this->mailboxLink, $pos);
         $subject = strip_tags($header->subject);
         $body    = '';
+        $plain = imap_fetchbody($this->mailboxLink, $pos, "3");
 
         if ($type == 'DSN') {
             // first part of DSN (Delivery Status Notification), human-readable explanation
@@ -561,18 +562,18 @@ class BounceMailHandler
 
             // process bounces by rules
             $result = bmhDSNRules($dsnMsg, $dsnReport, $this->debugDsnRule);
+
         } elseif ($type == 'BODY') {
             $structure = imap_fetchstructure($this->mailboxLink, $pos);
 
             switch ($structure->type) {
                 case 0: // Content-type = text
                     $body = imap_fetchbody($this->mailboxLink, $pos, "1");
-                    $result = bmhBodyRules($body, $structure, $this->debugBodyRule);
+                    $result = bmhBodyRules($body, $structure, $this->debugBodyRule);                    
                     break;
 
                 case 1: // Content-type = multipart
                     $body = imap_fetchbody($this->mailboxLink, $pos, "1");
-
                     // Detect encoding and decode - only base64
                     if ($structure->parts[0]->encoding == 4) {
                         $body = quoted_printable_decode($body);
@@ -585,7 +586,6 @@ class BounceMailHandler
 
                 case 2: // Content-type = message
                     $body = imap_body($this->mailboxLink, $pos);
-
                     if ($structure->encoding == 4) {
                         $body = quoted_printable_decode($body);
                     } elseif ($structure->encoding == 3) {
@@ -598,7 +598,6 @@ class BounceMailHandler
 
                 default: // unsupport Content-type
                     $this->output('Msg #' . $pos . ' is unsupported Content-Type:' . $structure->type, self::VERBOSE_REPORT);
-
                     return false;
             }
         } else {
@@ -620,7 +619,7 @@ class BounceMailHandler
         } else {
             $remove = $result['remove'];
         }
-
+        
         $ruleNumber   = $result['rule_no'];
         $ruleCategory = $result['rule_cat'];
         $xheader      = false;
@@ -635,7 +634,7 @@ class BounceMailHandler
                 $this->output('Match: ' . $ruleNumber . ':' . $ruleCategory . '; ' . $bounceType . '; ' . $email);
             } else {
                 // code below will use the Callback function, but return no value
-                $params = array($pos, $bounceType, $email, $subject, $header, $remove, $ruleNumber, $ruleCategory, $totalFetched, $body);
+                $params = array($pos, $bounceType, $email, $subject, $header, $remove, $ruleNumber, $ruleCategory, $totalFetched, $body, $plain);
                 call_user_func_array($this->actionFunction, $params);
             }
         } else {
@@ -645,7 +644,7 @@ class BounceMailHandler
 
                 return true;
             } else {
-                $params = array($pos, $bounceType, $email, $subject, $xheader, $remove, $ruleNumber, $ruleCategory, $totalFetched, $body);
+                $params = array($pos, $bounceType, $email, $subject, $xheader, $remove, $ruleNumber, $ruleCategory, $totalFetched, $body, $plain);
 
                 return call_user_func_array($this->actionFunction, $params);
             }
